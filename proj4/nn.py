@@ -71,10 +71,8 @@ class neuralNetwork(object):
 	def train(self, inputs, outputs):
 		epoch = 0
 		error = 1.0
-		prev = 0.0
-		cache = {}
 
-		while (config.EPOCH_THRESHOLD == -1 or epoch < config.EPOCH_THRESHOLD) and (error > config.ERROR_THRESHOLD or error == prev):
+		while epoch < config.EPOCH_THRESHOLD and error > config.ERROR_THRESHOLD:
 			prev = error
 			error = 0
 			cache.clear()

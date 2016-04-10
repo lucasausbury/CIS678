@@ -2,6 +2,7 @@ import os
 import math
 import statistics
 import csv
+from random import shuffle
 
 inputs=[]
 outputs=[]
@@ -82,26 +83,32 @@ def buildTranslate(d):
 def getData(directory, file, has_output):
 	inputs = []
 	outputs = []
+	tmp = []
+
 	with open(directory+"/"+file+".csv",'rb') as f:
 		reader=csv.reader(f)
 		for row in reader:
-			inp = []
-			out = []
+			tmp.append(row)
 
-			for (i,v) in enumerate(row):
-				value_index = translate[i]['values'].index(v)
+	shuffle(tmp)
+	for row in tmp:
+		inp = []
+		out = []
 
-				if has_output and i == len(row)-1:
-					if isinstance(translate[i]['translations'][value_index], list):
-						out += translate[i]['translations'][value_index]
-					else:
-						out.append(translate[i]['translations'][value_index])
+		for (i,v) in enumerate(row):
+			value_index = translate[i]['values'].index(v)
+
+			if has_output and i == len(row)-1:
+				if isinstance(translate[i]['translations'][value_index], list):
+					out += translate[i]['translations'][value_index]
 				else:
-					if isinstance(translate[i]['translations'][value_index], list):
-						inp += translate[i]['translations'][value_index]
-					else:
-						inp.append(translate[i]['translations'][value_index])
-			inputs.append(inp)
-			outputs.append(out)
+					out.append(translate[i]['translations'][value_index])
+			else:
+				if isinstance(translate[i]['translations'][value_index], list):
+					inp += translate[i]['translations'][value_index]
+				else:
+					inp.append(translate[i]['translations'][value_index])
+		inputs.append(inp)
+		outputs.append(out)
 
 	return {'inputs':inputs, 'outputs':outputs}
