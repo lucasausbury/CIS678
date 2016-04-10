@@ -92,7 +92,7 @@ def getData(directory, file, has_output):
 				value_index = translate[i]['values'].index(v)
 
 				if has_output and i == len(row)-1:
-					if translate[i]['translations'][value_index] is list:
+					if isinstance(translate[i]['translations'][value_index], list):
 						out += translate[i]['translations'][value_index]
 					else:
 						out.append(translate[i]['translations'][value_index])

@@ -17,7 +17,7 @@ class neuralNetwork(object):
 	
 	def __init__(self, data):
 		self.layers = []
-		self.classes = data['classes']
+		self.translate = data['translate']
 		i_size = len(data['inputs'][0])
 		o_size = len(data['outputs'][0])
 
