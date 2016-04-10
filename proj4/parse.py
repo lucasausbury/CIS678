@@ -1,16 +1,16 @@
 import os
+import math
+import statistics
 import csv
 
 inputs=[]
 outputs=[]
-classes={}
+translate={}
 
-def buildClasses(d):
+def buildTranslate(d):
 	f1 = d+"/training.csv"
 	f2 = d+"/test.csv"
-	del inputs[:]
-	del outputs[:]
-	classes.clear()
+	translate.clear()
 
 	if not os.path.isdir(d):
 		raise Exception('Directory doesn\'t exist')
@@ -23,60 +23,84 @@ def buildClasses(d):
 		reader=csv.reader(train)
 		for row in reader:
 			for (i,v) in enumerate(row):
-				if i not in classes:
-					classes[i]=[]
-				if v.isdigit():
-					classes[i]=['numeric']
-				else:
-					if v not in classes[i]:
-						classes[i].append(v)
+				if i not in translate:
+					translate[i]={'values':[], 'translations':[], 'type':'classed', 'is_output':False}
+
+				if i == len(row)-1:
+					translate[i]['is_output'] = True
+				if v not in translate[i]['values']:
+					translate[i]['values'].append(v)
 
 	with open(f2,'rb') as test:
 		reader=csv.reader(test)
 		for row in reader:
 			for (i,v) in enumerate(row):
-				if i not in classes:
-					classes[i]=[]
-				if v.isdigit():
-					classes[i]=['numeric']
-				else:
-					if v not in classes[i] and len(v) > 0:
-						classes[i].append(v)
-	return classes
+				if i not in translate:
+					translate[i]={'values':[], 'translations':[], 'type':'classed'}
 
-def getData(d, f):
-	del inputs[:]
-	del outputs[:]
-	with open(d+"/"+f+".csv",'rb') as train:
-		reader=csv.reader(train)
+				if v not in translate[i]['values']:
+					translate[i]['values'].append(v)
+
+	for key, attribute in translate.iteritems():
+		all_numeric = True
+
+		for value in attribute['values']:
+			all_numeric = all_numeric and unicode(value, 'utf-8').isnumeric()
+
+		# normalize numeric values
+		if all_numeric and not attribute['is_output']:
+			attribute['type'] = 'numeric'
+			tmp = [float(i) for i in attribute['values']]
+			attribute['mean'] = statistics.mean(tmp)
+			attribute['stdev'] = statistics.stdev(tmp)
+
+			for value in attribute['values']:
+				normal = (float(value) - attribute['mean']) / attribute['stdev']
+				attribute['translations'].append(normal)
+		# encode binary attributes
+		elif len(attribute['values']) == 2:
+			attribute['type'] = 'binary'
+
+			if attribute['is_output']:
+				attribute['translations'].extend((0.0, 1.0))
+			else:
+				attribute['translations'].extend((-1.0, 1.0))
+		# binary encode classed attributes
+		else:
+			num_values = len(attribute['values'])
+
+			for (i,v) in enumerate(attribute['values']):
+				if i == num_values-1 and not attribute['is_output']:
+					lst = [-1.0] * num_values
+				else:
+					lst = [0.0] * num_values
+					lst[num_values-i-1] = 1.0
+				attribute['translations'].append(lst)
+
+	return translate
+
+def getData(directory, file, has_output):
+	inputs = []
+	outputs = []
+	with open(directory+"/"+file+".csv",'rb') as f:
+		reader=csv.reader(f)
 		for row in reader:
 			inp = []
 			out = []
 
 			for (i,v) in enumerate(row):
-				if len(v) > 0:
-					if len(classes[i]) == 1:
-						if (i+1) == len(row):
-							out.append(float(v))
-						else:
-							inp.append(float(v))
-					elif len(classes[i]) == 2:
-						if (i+1) == len(row):
-							out.append(float(classes[i].index(v)))
-						else:
-							inp.append(float(classes[i].index(v)))
+				value_index = translate[i]['values'].index(v)
+
+				if has_output and i == len(row)-1:
+					if translate[i]['translations'][value_index] is list:
+						out += translate[i]['translations'][value_index]
 					else:
-						for c in classes[i]:
-							if (i+1) == len(row):
-								if c == v:
-									out.append(1.0)
-								else:
-									out.append(0.0)
-							else:
-								if c == v:
-									inp.append(1.0)
-								else:
-									inp.append(0.0)
+						out.append(translate[i]['translations'][value_index])
+				else:
+					if isinstance(translate[i]['translations'][value_index], list):
+						inp += translate[i]['translations'][value_index]
+					else:
+						inp.append(translate[i]['translations'][value_index])
 			inputs.append(inp)
 			outputs.append(out)
 

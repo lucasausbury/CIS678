@@ -1,21 +1,23 @@
 import sys
 import config
 import parse
-import mlp
+import nn
 
 if len(sys.argv) < 2:
 	sys.exit('Usage: %s directory-name' % sys.argv[0])
 
 d = sys.argv[1]
-try:
-	classes = parse.buildClasses(d)
-	data = parse.getData(d, "training")
-	data['classes'] = classes
-	nn = mlp.neuralNetwork( data )
+#try:
+translate = parse.buildTranslate(d)
+print translate
+data = parse.getData(d, "training", True)
 
-	data = parse.getData(d, "test")
+data['translate'] = translate
+nn = nn.neuralNetwork( data )
 
-	for row in data['inputs']:
-		print nn.predict( row )
-except Exception as error:
-	print error
+data = parse.getData(d, "test")
+
+for row in data['inputs']:
+	print nn.predict( row )
+#except Exception as error:
+#	print error

@@ -1,5 +1,5 @@
-RAND_WEIGHT_MIN			= -1
-RAND_WEIGHT_MAX			= 1
+RAND_WEIGHT_MIN			= -.1
+RAND_WEIGHT_MAX			= .1
 ACTIVATION_FUNCTION		= 'binary_sigmoid'		# threshold, binary_sigmoid, bipolar_sigmoid, or hyperbolic_tangent
 HIDDEN_LAYERS			= 1
 HIDDEN_LAYER_SIZE		= 0						# 0 is default (2/3 *[#inputs + #outputs])
