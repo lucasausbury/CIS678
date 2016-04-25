@@ -12,8 +12,7 @@ translate = parse.buildTranslate(d)
 data = parse.getData(d, "training", True)
 
 data['translate'] = translate
-print data
-#nn = nn.neuralNetwork( data )
+nn = nn.neuralNetwork( data )
 #print nn
 
 #data = parse.getData(d, "test")

@@ -70,80 +70,55 @@ class neuralNetwork(object):
 
 	def train(self, inputs, outputs):
 		epoch = 0
-		error = 1.0
+		error_avg = 1.0
+		error_ttl = 0
+		error_cnt = 0
 
-		while epoch < config.EPOCH_THRESHOLD and error > config.ERROR_THRESHOLD:
-			prev = error
-			error = 0
-			cache.clear()
-			et = 0
-			ec = 0
-
+		while epoch < config.EPOCH_THRESHOLD and error_avg > config.ERROR_THRESHOLD:
 			for (index,row) in enumerate(inputs):
-				e = 0
-
+				error = 0
 				# set input values
 				for (i,v) in enumerate(row):
-						self.layers[0][i+1].value = v
+					self.layers[0][i+1].value = v
 
 				# calculate result
-				l = 1
-				while l < len(self.layers):
-					for (c,n) in enumerate(self.layers[l]):
-						if not n.is_bias:
-							n.value = 0
-							for n2 in self.layers[l-1]:
-								n.value += (n2.value * n2.weights[c-1])
-							n.value = self.y(n.value)
-					l += 1
+				for (i,l) in enumerate(self.layers):
+					if i > 0:
+						for (j,n) in enumerate(l):
+							if not n.is_bias:
+								n.value = 0
+								for inp in self.layers[i-1]:
+									n.value += (inp.value * inp.weights[j-1])
+								n.value = self.y(n.value)
 
-				# calculate error and adjust weights
-				l = len(self.layers) - 1
-				while l >= 0:
-					for (c,n) in enumerate(self.layers[l]):
-						if c not in cache:
-							cache[c] = {}
+				# calculate error
+				for (i,l) in reversed(list(enumerate(self.layers))):
+					if i > 0:
+						for (j,n) in enumerate(l):
+							if i == len(self.layers)-1:
+								actual = outputs[index][j]
+								n.error = (actual - n.value) * n.value * (1 - n.value)
+								error += (.5 * math.pow((n.value - actual), 2))
+								#print "RETURNED: %f, SHOULD BE: %f" % (n.value, actual)
+							else:
+								out = self.layers[i+1]
+								weights = 0
+								for (k,w) in enumerate(n.weights):
+									weights += w * out[k].error
 
-						if l == len(self.layers)-1:
-							n.error = n.value * (1 - n.value) * (outputs[index][c] - n.value)
-							e1 = math.pow((outputs[index][c] - n.value), 2)
-							e += e1
-							et += e1
-							ec += 1
-							print "%f, %f => %f (%f)" % (outputs[index][c], n.value, e1, e)
-							#print "\tACTUAL: %d, PREDICTED: %f, ERROR: %f" %(outputs[index][c], n.value, n.error)
-							#print "\t%f * (1 - %f) * (%d - %f)" % (n.value, n.value, outputs[index][c], n.value)
-							#print
-						else:
-							weight_error = 0
-							for (wi,wv) in enumerate(n.weights):
-								if wi not in cache[c]:
-										cache[c][wi] = 0
+									# adjust weight
+									n.weights[k] = w + config.ETA * out[k].error * n.value
+									#print "\t%f, %f => %f" % (w, out[k].error, n.weights[k])
 
-								if l < (len(self.layers) - 2):
-									# connects to hidden layer
-									weight_error += (wv * self.layers[l+1][wi+1].error)
-									d = config.ETA * self.layers[l+1][wi+1].error * n.value
-								else:
-									# connects to output layer
-									weight_error += (wv + self.layers[l+1][wi].error)
-									d = config.ETA * self.layers[l+1][wi].error * self.layers[l+1][wi].value
-
-								if config.MOMENTUM:
-									d += config.ALPHA * cache[c][wi]
-
-								n.weights[wi] = wv + d
-								cache[c][wi] = d
-
-							n.error = n.value * (1 - n.value) * weight_error
-					l -= 1
-				print
-				error += e
+								n.error = n.value * (1 - n.value) * weights
+						#print "ERROR: " + str(error)
+				error_ttl += error
+				error_cnt += 1
+			error_avg = error_ttl / float(error_cnt)
 			epoch += 1
-			#error = error * .5
-			error = et / float(ec)
-		print "EPOCH: %d, ERROR: %f" % (epoch, error)
-	
+			print "AVG ERROR: " + str(error_avg)
+		print "EPOCHS: " + str(epoch)
+
 	def predict(self, data):
 		# set input layer values
 		for (i,v) in enumerate(data):

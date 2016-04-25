@@ -49,15 +49,19 @@ def buildTranslate(d):
 			all_numeric = all_numeric and unicode(value, 'utf-8').isnumeric()
 
 		# normalize numeric values
-		if all_numeric and not attribute['is_output']:
+		if all_numeric:
 			attribute['type'] = 'numeric'
 			tmp = [float(i) for i in attribute['values']]
 			attribute['mean'] = statistics.mean(tmp)
 			attribute['stdev'] = statistics.stdev(tmp)
 
 			for value in attribute['values']:
-				normal = (float(value) - attribute['mean']) / attribute['stdev']
-				attribute['translations'].append(normal)
+				if not attribute['is_output']:
+					normal = (float(value) - attribute['mean']) / attribute['stdev']
+					attribute['translations'].append(normal)
+				else:
+					attribute['translations'].append(float(value))
+
 		# encode binary attributes
 		elif len(attribute['values']) == 2:
 			attribute['type'] = 'binary'
