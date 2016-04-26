@@ -1,47 +1,128 @@
 import random
+import config
 
 class Board(object):
 	def __init__(self):
+		self.wins = [
+			(0,1,2), (3,4,5), (6,7,8),
+			(0,3,6), (1,4,7), (2,5,8),
+			(0,4,8), (2,4,6)
+		]
 		self.grid = []
-		self.x_count = 0
-		self.o_count = 0
-		self.draw_count = 0
-
 		self.reset()
 
 	def reset(self):
 		self.grid[:] = []
-		self.grid = [[None for i in range(3)] for j in range(3)]
+		self.grid = [None for i in range(9)]
+		self.num_moves = 0
+		self.states = []
 
-	def play_random(self, mark):
-		while True:
-			x = random.randint(0,2)
-			y = random.randint(0,2)
+	def play(self, player, index):
+		if self.grid[index] is None:
+			self.grid[index] = player.mark
+			self.num_moves += 1
 
-			if self.grid[y][x] is None:
-				break
+			self.states.append(self.valid_moves())
 
-		self.grid[y][x] = mark
+			if self.game_over() == 2:
+				player.won = True
+			else:
+				player.reward(0)
 
-	def game_won(self, mark):
-		for y,row in enumerate(self.grid):
-			for x,col in enumerate(row):
-				if self.grid[x][0] == self.grid[x][1] == self.grid[x][2] == mark:
-					return True
-				if self.grid[0][y] == self.grid[1][y] == self.grid[2][y] == mark:
-					return True
-		if self.grid[0][0] == self.grid[1][1] == self.grid[2][2] == mark:
-			return True
-		if self.grid[0][2] == self.grid[1][1] == self.grid[2][0] == mark:
-			return True
-		return False
+	def game_over(self):
+		for i,j,k in self.wins:
+			if self.grid[i] is not None and self.grid[i]==self.grid[j]==self.grid[k]:
+				return 2 # won
+		if self.num_moves >= 9:
+			return 1 # draw
+		else:
+			return 0 # still playing
+
+	def valid_moves(self):
+		return [i for i in range(0,9) if self.grid[i] is None]
+
+	def get_state(self, offset=None):
+		if offset is None:
+			return tuple(self.grid)
+		else:
+			return tuple(self.states[offset])
 
 	def __str__(self):
 		out = ''
 
-		for y,row in enumerate(self.grid):
-			for x,col in enumerate(row):
-				out = out + (" - " if col is None else " %s " % col)
-			out = out + "\n"
+		for k,v in enumerate(self.grid):
+			if k % 3 == 0 and k is not 0:
+				out = out + "\n"
+			out = out + (" - " if v is None else " %s " % v)
 
 		return out
+
+class RandomPlayer(object):
+	def __init__(self, mark, board):
+		self.mark = mark
+		self.board = board
+		self.reset()
+
+	def reset(self):
+		self.won = False
+
+	def move(self):
+		i = random.choice( self.board.valid_moves() )
+		self.board.play(self, i)
+
+	def reward(self, reward):
+		return
+
+class LearningPlayer(object):
+	def __init__(self, mark, board):
+		self.mark = mark
+		self.board = board
+		self.q = {}
+		self.reset()
+
+	def reset(self):
+		self.won = False
+		self.last_action = None
+
+	def getValue(self, state, action):
+		if self.q.get((state, action)) is None:
+			self.q[(state, action)] = 1.0
+		return self.q.get((state, action))
+
+	def move(self):
+		valid_moves = self.board.valid_moves()
+		state = self.board.get_state()
+
+		if random.random() < config.EPSILON:
+			i = random.choice( valid_moves )
+		else:
+			values = []
+
+			for a in valid_moves:
+				values.append( self.getValue(state, a) )
+				maxq = max(values)
+
+				if values.count(maxq) > 1:
+					tmp = []
+					for i,v in enumerate(values):
+						if v == maxq:
+							tmp.append(i)
+					i = random.choice(tmp)
+				else:
+					i = values.index(maxq);
+
+		self.board.play(self, i)
+		self.last_action = i
+
+	def reward(self, reward):
+		final_state = self.board.get_state()
+		last_state = self.board.get_state(-1)
+		last_value = self.getValue(last_state, self.last_action)
+
+		tmp = []
+		for a in list(last_state):
+			tmp.append(self.getValue(final_state, a))
+
+		if len(tmp) > 0:
+			maxq = max(tmp)
+			self.q[(last_state, self.last_action)] = last_value + config.ETA*((reward + config.GAMMA*maxq) - last_value)

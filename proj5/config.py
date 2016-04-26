@@ -1,0 +1,4 @@
+RANDOMIZE_START = True
+EPSILON = .2
+ETA = .3
+GAMMA = .9

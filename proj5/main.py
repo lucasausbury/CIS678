@@ -1,51 +1,46 @@
-import sys
+import random
+import config
 import tictactoe
-import analytics
 
-board = tictactoe.Board()
-x_wins = 0
-o_wins = 0
-draws = 0
+board = tictactoe.Board();
+playerX = tictactoe.LearningPlayer("X", board);
+playerO = tictactoe.RandomPlayer("O", board);
 
-if len(sys.argv) < 2:
-	games = 1
-	verbose = True
-else:
-	verbose = False
-	games = int(sys.argv[1])
+wins = {'X':0, 'O':0, 'D':0}
 
-for i in range(games):
+for i in range(10000):
 	board.reset()
-	moves = 0
-	done = False
+	playerX.reset()
+	playerO.reset()
 
-	while not done and moves < 9:
-		moves += 1
+	# randomize who goes first
+	if config.RANDOMIZE_START:
+		coinflip = random.randint(1,2)
+	else:
+		coinflip = 1
 
-		if moves % 2:
-			mark = 'X'
+	if coinflip == 1:
+		p1 = playerX
+		p2 = playerO
+	else:
+		p1 = playerO
+		p2 = playerX
+
+	while board.game_over() == 0:
+		if board.num_moves % 2 == 0:
+			p1.move()
 		else:
-			mark = 'O'
+			p2.move()
 
-		board.play_random(mark)
+	if playerX.won:
+		playerX.reward(1)
+		playerO.reward(-1)
+		wins['X'] += 1
+	elif playerO.won:
+		playerX.reward(-1)
+		playerO.reward(1)
+		wins['O'] += 1
+	else:
+		wins['D'] += 1
 
-		if verbose:
-			print board
-
-		if board.game_won(mark):
-			if verbose:
-				print "Game over. %s wins!" % mark
-
-			done = True
-			if mark == 'X':
-				x_wins += 1
-			elif mark == 'O':
-				o_wins += 1
-
-	if moves == 9 and not done:
-		if verbose:
-			print "Draw."
-		draws += 1
-
-if not verbose:
-	print "X: %d\tO: %d\tDraw: %d" % (x_wins, o_wins, draws)
+print "P1: %d, P2: %d, D: %d" % (wins['X'], wins['O'], wins['D'])
