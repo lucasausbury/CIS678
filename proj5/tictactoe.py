@@ -64,8 +64,11 @@ class TicTacToe(object):
 		else:
 			return 0 # still playing
 
-	def valid_moves(self):
-		return [i for i in range(0,9) if self.board[i] is None]
+	def valid_moves(self, board=None):
+		if board is None:
+			board = self.board
+
+		return [i for i in range(0,9) if board[i] is None]
 
 	def __str__(self):
 		out = ''
@@ -91,13 +94,12 @@ class RandomPlayer(object):
 		return
 
 class LearningPlayer(object):
-	def __init__(self):
-		self.q = {}
-
 	def connect(self, game, mark):
+		self.q = {}
 		self.won = False
 		self.game = game
 		self.mark = mark
+		self.last_state = tuple(self.game.board)
 		self.last_action = None
 
 	def getValue(self, state, action):
@@ -106,39 +108,41 @@ class LearningPlayer(object):
 		return self.q.get((state, action))
 
 	def move(self):
+		self.last_state = tuple(self.game.board)
 		valid_moves = self.game.valid_moves()
-		state = self.game.get_state()
+		q_values = []
 
-		if random.random() < config.EPSILON:
-			i = random.choice( valid_moves )
-		else:
-			values = []
+		for a in valid_moves:
+			q_values.append( self.getValue(self.last_state, a) )
+			maxq = max(q_values)
 
-			for a in valid_moves:
-				values.append( self.getValue(state, a) )
-				maxq = max(values)
+			if q_values.count(maxq) > 1:
+				tmp = []
+				for i,v in enumerate(q_values):
+					if v == maxq:
+						tmp.append(i)
+				i = random.choice(tmp)
+			else:
+				i = q_values.index(maxq);
 
-				if values.count(maxq) > 1:
-					tmp = []
-					for i,v in enumerate(values):
-						if v == maxq:
-							tmp.append(i)
-					i = random.choice(tmp)
-				else:
-					i = values.index(maxq);
-
-		self.board.play(self, i)
-		self.last_action = i
+		self.game.board[valid_moves[i]] = self.mark
+		self.last_action = valid_moves[i]
 
 	def reward(self, reward):
-		final_state = self.game.board.get_state()
-		last_state = self.game.board.get_state(-1)
-		last_value = self.getValue(last_state, self.last_action)
+		state = self.last_state
+		action = self.last_action
+		final_state = tuple(self.game.board)
+		prev = self.getValue(state, action)
+		maxq = max([self.getValue(final_state, a) for a in self.game.valid_moves(state)])
+		self.q[(state, action)] = prev + config.ETA * ((reward + config.GAMMA*maxq) - prev)
 
-		tmp = []
-		for a in list(last_state):
-			tmp.append(self.getValue(final_state, a))
 
-		if len(tmp) > 0:
-			maxq = max(tmp)
-			self.q[(last_state, self.last_action)] = last_value + config.ETA*((reward + config.GAMMA*maxq) - last_value)
+
+#    def reward(self, value, board):
+#        if self.last_move:
+#            self.learn(self.last_board, self.last_move, value, tuple(board))
+
+#    def learn(self, state, action, reward, result_state):
+#        prev = self.getQ(state, action)
+#        maxqnew = max([self.getQ(result_state, a) for a in self.available_moves(state)])
+#        self.q[(state, action)] = prev + self.alpha * ((reward + self.gamma*maxqnew) - prev)

@@ -3,7 +3,7 @@ import config
 import tictactoe as ttt
 
 
-player1 = ttt.RandomPlayer();
+player1 = ttt.LearningPlayer();
 player2 = ttt.RandomPlayer();
 wins = {'P1':0, 'P2':0, 'D':0}
 
